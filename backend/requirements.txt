@@ -1,0 +1,15 @@
+Django==5.2.6
+djangorestframework==3.16.1
+requests>=2.31.0
+# for postgresql
+psycopg[binary]==3.2.10
+# jwt
+djangorestframework-simplejwt
+# dependency for both redis and celery
+redis>=4.5.0
+# for django redis caching
+django-redis>=5.2.0
+# for schedule
+django-celery-beat>=2.5.0
+# celery
+celery>=5.3.0

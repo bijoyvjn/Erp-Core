@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:17
+    container_name: erp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: erp_db
+      POSTGRES_USER: erp_user
+      POSTGRES_PASSWORD: erp_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    container_name: erp-backend
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/ERP
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  redis:
+    image: redis:7-alpine
+    container_name: erp-redis
+    ports:
+      - "6379:6379"
+
+# 1. The Worker
+  celery_worker:
+    build:
+      context: ./backend
+    container_name: erp-celery-worker
+    command: celery -A core.celery:app worker -l info
+    volumes:
+      - ./backend:/ERP
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DJANGO_SETTINGS_MODULE=core.settings
+    depends_on:
+      - db
+      - redis
+
+  # 2. The Scheduler
+  celery_beat:
+    build:
+      context: ./backend
+    container_name: erp-celery-beat
+    command: celery -A core.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./backend:/ERP
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DJANGO_SETTINGS_MODULE=core.settings
+    depends_on:
+      - db
+      - redis
+
+# 3. FastAPI Microservice (Port 8001)
+  events_service:
+    build:
+      context: ./events_service
+    container_name: erp-events-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./events_service:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
