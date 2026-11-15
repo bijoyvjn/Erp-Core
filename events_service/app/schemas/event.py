@@ -11,7 +11,7 @@ class EventStatus(str, Enum):
     PENDING = "PENDING"
 
 
-# 2. Pydantic Model (Replaces DRF Serializer)
+# 2. input data schema - Pydantic Model (Replaces DRF Serializer)
 class AllocationApprovalEvent(BaseModel):
     # Enforces Pydantic v2 configuration
     model_config = ConfigDict(extra="forbid")  # Rejects payload if unknown keys are passed

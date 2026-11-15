@@ -1,13 +1,16 @@
 from pathlib import Path
 from datetime import timedelta
 
+from celery.schedules import crontab
+from decouple import config, Csv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-sknyvr&9-d2_dxt@y_w*5vh41-*vuvgv0)ww8i()9ivtit!ghy'
+SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -59,11 +62,11 @@ AUTH_USER_MODEL = "users.CustomUser"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "erp_db",
-        "USER": "erp_user",
+        "NAME": config('DB_NAME', default='erp_db'),
+        "USER": config('DB_USER', default='erp_user'),
         "PASSWORD": "erp_password",
-        "HOST": "db",
-        "PORT": "5432",
+        "HOST": config('DB_HOST', default='db'),
+        "PORT": config('DB_PORT', default='5432'),
     }
 }
 
@@ -92,16 +95,19 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=300),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=config('JWT_ACCESS_MINUTES', default=300, cast=int)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=config('JWT_REFRESH_DAYS', default=1, cast=int)),
 }
 
 # REDIS CACHING ----------------
 
+REDIS_HOST = config('REDIS_HOST', default='redis')
+REDIS_PORT = config('REDIS_PORT', default='6379')
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -128,8 +134,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CELERY ---------------------
 
 # We use database /0 for Celery, leaving /1 for your django cache
-CELERY_BROKER_URL = "redis://redis:6379/0"
-CELERY_RESULT_BACKEND = "redis://redis:6379/0"
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -137,13 +143,11 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE  # Uses UTC from your settings
 
 
-from celery.schedules import crontab
-
 CELERY_BEAT_SCHEDULE = {
     # Runs on an interval
-    "check-expiring-allocations-every-minute": {
+    "check-expiring-allocations-every-hour": {
         "task": "organization.tasks.check_expiring_allocations",
-        "schedule": 60.0,  # Runs every 60 seconds (Use crontab(hour=0, minute=0) for midnight)
+        "schedule": crontab(minute=0, hour="*"),  # Runs every 1 hour (Use crontab(hour=0, minute=0) for midnight)
     },
     # Runs every night at 12:00 AM (Midnight)
     "auto-close-expired-allocations-midnight": {

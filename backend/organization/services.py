@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Sends project allocation event to the FastAPI microservice.
+# Sends project allocation event - FastAPI microservice.
 def notify_events_microservice(allocation):
     try:
         payload = {
